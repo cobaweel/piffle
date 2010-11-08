@@ -1,0 +1,76 @@
+PFC.PCAP(1)                                                        PFC.PCAP(1)
+
+
+
+NAME
+       pfc.pcap - Any Piffle program using the pcap.c boilerplate
+
+SYNOPSIS
+       pfc.pcap [OPTIONS]
+
+DESCRIPTION
+       This  manual  page applies to any Piffle program that has been compiled
+       with the -Bpcap.c option.
+
+OPTIONS
+       If no input device or file is specified, the program will try  to  read
+       from  the  standard network device. If no output file is specified, and
+       -v is not specified, the program will most likely produce no output  at
+       all, which is probably not what you want.
+
+       --help or -h
+
+              Show a help text.
+
+       --device=<dev> or -d <dev>
+
+              Use  <dev> as monitoring device. The device notation is the same
+              as for tcpdump, so you can use tcpdump -D to get a list of valid
+              devices.
+
+       --input=<file> or -f <file>
+
+              Read the input from capture file <file>. (Use - for stdin.)
+
+       --output=<file> or -o <file>
+
+              Write the output packets to file <file>. The resulting file is a
+              tcpdump-compatible capture file. (Use - for stdout.)
+
+       --filter=<exp> or -F <exp>
+
+              Tell the the pcap library to compile the expression <exp> into a
+              Berkeley  Packet  Filter and apply it to incoming packets before
+              feeding them to the Piffle program. For instance,  you  can  use
+              -Ftcp  if  you  want  to select only TCP packets. The syntax for
+              <exp> is described in the tcpdump(8) man page.
+
+       -v or --verbose
+
+              Be more verbose during monitoring.
+
+RETURN VALUES
+       The program will print error messages to stderr, and return the follow-
+       ing error codes:
+
+       0      Normal exit, no problems.
+
+       1      Problem parsing command line.
+
+       2      Problem opening file or device.
+
+       3      Problem with a pcap library call.
+
+SEE ALSO
+       pfc(1), pcap(3), tcpdump(8)
+
+BUGS
+       Please report to the author.
+
+AUTHOR
+       Jaap Weel <weel@ugcs.caltech.edu>
+
+
+
+
+pfc-0.1                                                            PFC.PCAP(1)

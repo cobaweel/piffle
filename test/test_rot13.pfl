@@ -1,0 +1,48 @@
+/*
+ * Do ROT13, and some other stuff. While we're at it, frivolously use
+ * various Piffle language features to make sure they're working
+ * right.
+ */
+
+fun rot_13_lower( alpha : u8 ) : u8 = {
+     var beta : u8;
+
+     beta = alpha;
+     if alpha : s32 >= 0x61 && alpha <= 0x7a then {
+          beta = ((alpha - 0x61) + 13) % 26 + 0x60 + true:u8;
+     };
+
+     beta;
+};
+
+fun filter( inp : u8[65536], 
+            in_sz : u32, 
+            out : u8[65536], 
+            out_sz : u32 ) : u32 = {
+     var out_sz_new : u32;
+
+     out_sz_new = if in_sz < out_sz then in_sz else out_sz;
+
+     for i from 0 to 65536 while i < out_sz_new do {
+          var _alPha : u8;
+          _alPha = inp[i:s16];
+
+          /* Rot-13 lowercase */
+          _alPha = rot_13_lower(_alPha);
+
+          /* Rot-13 uppercase */
+          _alPha = 
+               if _alPha >= 0o101 && _alPha <= 0o132 then 
+                    (_alPha - 0o101 + 13) % 26 + 0o101
+               else
+                    _alPha;
+
+          /* Replace all punctuation by exclamation points. */
+          if _alPha >= 33 && _alPha <= 47 || _alPha >= 58 && _alPha <= 64 then
+                _alPha = 0x21;                        
+
+          out[i] = _alPha;
+     };
+
+     out_sz_new;
+};

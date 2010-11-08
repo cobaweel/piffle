@@ -1,0 +1,4 @@
+fun filter ()  = {
+        var x : s32;
+        x = 3 << x;
+};

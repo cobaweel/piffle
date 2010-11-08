@@ -1,0 +1,98 @@
+PFC(1)                                                                  PFC(1)
+
+
+
+NAME
+       pfc - Piffle Compiler
+
+SYNOPSIS
+       pfc [OPTIONS] file.pfl
+
+INTRODUCTION
+       Piffle is a pronounceable form of PFL, that is, Packet Filter Language.
+       Piffle is a very simple programming language for writing network packet
+       filters,  with  one special feature: the compiler can enforce limits on
+       the processor time and memory used for processing each packet of input.
+       This is accomplished by passing arguments to the -C and -M command line
+       options. Memory bounds are in words, more or less, and CPU  bounds  are
+       in arbitrary units.
+
+DESCRIPTION
+       pfc is a compiler that compiles programs written in Piffle. It produces
+       a C file, which must be further processed  with  the  GNU  C  compiler.
+       Typically, you would use pfc like this:
+
+              pfc -Bpcap.c foo.pfl
+
+       That  would  compile foo.pfl into a new file called foo.c, and it would
+       embed the pcap.c boilerplate, which is the one you should use when  you
+       want  to  use the pcap library. Next, you would compile the resulting C
+       program with
+
+              cc -o foo foo.pfl -lpcap
+
+OPTIONS
+       -h or --help
+
+              Prints a short usage message.
+
+       -a or --ansicolors
+
+              If you specify this option, error and debug messages will be  in
+              color, using standard ANSI escape sequences. This is very useful
+              for debugging, and looks pretty.
+
+       -d [<N>] or --debug[=<N>]
+
+              Sets the debug level. When <N> is not specified, default  is  0.
+              When  -d  is  not specified at all, default is 99. A debug level
+              setting of N causes all debug messages to be printed to standard
+              error that are marked with an importance greater than <N>.
+
+       -C <N> or --cpu=<N>
+
+              This  will cause the compiler to abort with an error if the main
+              function (filter()) would run for longer than <N> arbitrary  CPU
+              usage units on at least some inputs.
+
+       -M <N> or --mem=<N>
+
+              This  will cause the compiler to abort with an error if the main
+              function (filter()) would consume more  than  approximately  <N>
+              words of memory on at least some inputs.
+
+       -B <file> or --boilerplate=<file>
+
+              This  will  cause  the  contents  of  the specified <file> to be
+              inserted into the output. This argument is  not  mandatory,  but
+              the output of the compiler is not very useful without one of the
+              boilerplate files inserted into it. The  compiler  will  produce
+              cpp  line  directives  so  that gcc will reference errors in the
+              boilerplate to the appropriate lines in the boilerplate file.
+
+FILES
+       The boilerplate files used by pfc must be  in  the  boilerplate  search
+       path,  which  consists  of the contents of the PIFFLEBOILER environment
+       variable appended to the standard path,
+
+               .:/usr/share/piffle:/usr/local/share/piffle
+
+BUGS
+       When a command line option is specified more than once, all  occurences
+       but the last are silently ignored. I plan to write a grand unified pro-
+       gram configuration library for Haskell one day, which is going to  read
+       command  lines,  environment variables, and various sorts of configura-
+       tion files. Obviously, even though the grand unified library will prob-
+       ably  never  materialize,  I  am reluctant now to overly complicate the
+       command line parsing in pfc.
+
+       The C code produced by pfc is not standard ANSI C. It uses  GNU  exten-
+       sions and can only be compiled by gcc.
+
+AUTHOR
+       Jaap Weel <weel@ugcs.caltech.edu>
+
+
+
+
+pfc-0.1                                                                 PFC(1)

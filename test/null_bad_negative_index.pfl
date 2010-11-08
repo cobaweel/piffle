@@ -1,0 +1,5 @@
+/* Bad declaration. */
+
+var x : s32[-3];
+
+fun filter () = unit;

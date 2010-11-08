@@ -1,0 +1,15 @@
+fun filter () : s32 = {
+        var x : s32;
+        var y : u16;
+
+        x = 2;
+        y = 3;
+        
+        x = x + 2 - x;
+        x = x + y : s32;
+        x += y : s32 / 0;  /* Useless but not wrong! */
+        x = x << y;
+        y = y >> x;
+        y >>= x;
+        x <<= y;
+};

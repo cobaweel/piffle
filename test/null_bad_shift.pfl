@@ -1,0 +1,9 @@
+fun filter () : u32 = {
+        var x : s32;
+        var shift : u16;
+
+        x = 2;
+        shift = 3;
+
+        x << shift;
+};

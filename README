@@ -1,0 +1,44 @@
+                             -*- text -*-
+
+          --------------------------------------------------
+                               Piffle
+                 A network packet processing language
+          --------------------------------------------------
+
+
+                            DOCUMENTATION
+
+For more information about the piffle language, please read the piffle
+report in doc/piffle.*, for example like so:
+
+    xpdf doc/piffle.pdf
+
+(You do first have to build the documentation. Just type "make
+doc". The documentation for each released tarball version is also
+available on the web site directly in PDF form.)
+
+For more information about the piffle compiler pfc, read the pfc man
+page in doc/pfc.*, for example like so:
+
+    man -l doc/pfc.1
+
+or 
+
+    less doc/pfc.txt
+
+To get started reading the source code to the pfc compiler, first read
+the file src/HACKING.
+
+You can contact the author, Jaap Weel, at weel at ugcs dot caltech dot
+edu or read his web page at http://www.ugcs.caltech.edu/~weel. The
+Piffle project can be found at http://code.google.com/p/piffle.
+
+
+                            COMPATIBILITY
+
+Piffle has been tested on a GNU/Linux, with the GNU C compiler, the
+GNU make tools, and the Glorious Glasgow Haskell Compiler (ghc)
+version 6.4. If you want to compile it on other platforms, feel free
+to give it a try, and please do send patches. (I have little interest,
+though, in supporting platforms that aren't at least vaguely unixy.)
+

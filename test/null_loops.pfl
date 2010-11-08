@@ -1,0 +1,28 @@
+fun bar(i : s32) : s32 = {
+     (i < 10) : s32;
+};
+
+fun filter () = {
+     var x : s32[1024];
+     var count : u32;
+
+     count = 0;
+
+     for i in x while bar(i) do {
+          for j in x while !bar(j) do {
+               count *= 2;
+          };
+          count += 
+               if (count > 3) then
+                    {1;}:u32 
+               else 
+                    2;
+     };
+
+     for i from 0 to 20 do {
+          count -= 1;
+     };
+};
+
+
+     

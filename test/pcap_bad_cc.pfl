@@ -1,0 +1,8 @@
+/*
+ * This test is supposed to trip up the C compiler.
+ */
+
+fun filter( inp : s8[65536], in_sz : u32, 
+            out : s8[65536], out_sz : u32 ) : u32 = 0;
+
+

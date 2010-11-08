@@ -1,0 +1,88 @@
+/*
+ * This is an actual packet filter that should work with the pcap
+ * boilerplate. It only lets through TCP packets. In particular, it
+ * drops everything that is not IP (such as ARP), and everything that
+ * is IP but not TCP (such as UDP). For instance,
+ *
+ *  pcap_tcp -v -Fudp
+ *
+ * should give no output at all, while
+ *
+ *  pcap_tcp -v -Ftcp
+ *
+ * should give output. (If there's any TCP traffic going on.)
+ *
+ * Note that, on my machine, which has a run-off-the-mill ethernet
+ * adapter, the link level header that sits in front of the IP packet
+ * is 16 bytes long, and has an EtherType in bytes 14 and 15 (counting
+ * from 0). I have no idea if this code would work for 802.11*
+ * wireless networks, FDDI, Myrinet &c.
+ */
+
+/*
+ * Get the EtherType protocol number, or -1 if the packet is too small.
+ */
+fun ethertype( inp : u8[65536], inp_sz : u32 ) : s32 = {
+     if inp_sz < 16 then -1 else ((inp[14] : u16 << 8) | (inp[15] : u16)) : s32;
+};
+
+/*
+ * Is the packet an IP packet?
+ */
+fun ip_p ( inp : u8[65536], inp_sz : u32 ) : bool = {
+     var ethertype_s : s32;
+
+     ethertype_s = ethertype(inp, inp_sz);
+     if ethertype_s < 0 then false else ethertype_s == 0x0800;
+};
+
+/*
+ * Get the IP protocol number, or -1 if the packet is too small.
+ */
+fun ip_protocol( inp : u8[65536], inp_sz : u32 ) : s32 = {
+     if inp_sz < 26 then -1 else inp[25] : s32;
+};
+
+/*
+ * Is the packet a TCP packet?
+ */
+fun tcp_p ( inp : u8[65536], inp_sz : u32 ) : bool = {
+     var ip_protocol_s : s32;
+
+     ip_protocol_s = ip_protocol(inp, inp_sz);
+     if ip_protocol_s < 0 then false else ip_protocol_s == 0x06;
+};
+
+/*
+ * Is the packet a UDP packet?
+ */
+fun udp_p ( inp : u8[65536], inp_sz : u32 ) : bool = {
+     var ip_protocol_s : s32;
+
+     ip_protocol_s = ip_protocol(inp, inp_sz);
+     if ip_protocol_s < 0 then false else ip_protocol_s == 0x11;
+};
+
+/*
+ * This is the main filter function. 
+ */
+fun filter( inp : u8[65536], inp_sz : u32, 
+            out : u8[65536], out_sz : u32 ) : u32 = {
+     var out_sz_new : u32;
+
+     /* If the input array does not fit in the output array, we'll
+      * have to truncate. */
+     out_sz_new = if inp_sz < out_sz then inp_sz else out_sz;
+
+     /* Copy the input array to the output array. */
+     for i from 0 to 65536 while i < out_sz_new do {
+          out[i] = inp[i];
+     };
+
+     /* If the packet is not IP or not TCP, set the output size to
+      * 0. */
+     if !ip_p(inp, inp_sz) then out_sz_new = 0;
+     if !tcp_p(inp, inp_sz) then out_sz_new = 0;
+
+     out_sz_new;
+};

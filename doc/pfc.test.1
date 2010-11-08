@@ -1,0 +1,23 @@
+.TH PFC.TEST 1 "" "pfc-0.1" ""
+.SH NAME
+pfc.test \- Any Piffle program using the test.c boilerplate
+.SH SYNOPSIS
+.B \fIpfc.test\fR
+.SH DESCRIPTION
+This manual page applies to any Piffle program that has been compiled
+with the -Btest.c option. A Piffle program compiled that way takes no
+command line arguments. It reads newline-separated lines from stdin
+until EOF, and sends each line to the filter() function as a
+null-terminated character array. Empty lines are ignored. The filter()
+function is expected to return a null-terminated character
+array. Output is printed to stdout, separated by newlines. Error
+checking is minimal, and error messages are cryptic. The test.c
+boilerplate exists mainly just to support the Piffle test suite, and
+probably should not be used for anything else.
+.SH "SEE ALSO"
+.B pfc(1)
+.SH BUGS
+Please report to the author.
+.SH AUTHOR
+Jaap Weel <weel@ugcs.caltech.edu>
+

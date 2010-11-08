@@ -1,0 +1,632 @@
+% Report on Piffle, A Packet Filter Language
+% by Jaap Weel
+
+\documentclass[a4paper,12pt]{scrreprt}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{fancyvrb}
+\titlehead{Vrije Universiteit Amsterdam\\ MPhil Parallel and
+  Distributed Computer Systems \\ Compiler
+  Construction Practical}
+\title{Piffle\\ A Packet Filter Language}
+\author{Jaap Weel}
+\date{Version \input{release}}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\chapter{Notices}
+\section{Latest version of this document}
+
+For up-to-date information on Piffle, and the latest version of this
+document, be sure to visit the following web site:
+
+ \textit{http://code.google.com/p/piffle/wiki/PiffleWiki}
+
+\section{Copyright notice}
+
+Copyright (c) 2007, Jaap Weel. This work is licensed under
+the Creative Commons Attribution--Share-Alike 3.0 License. To view a
+copy of this license, visit
+
+\textit{http://creativecommons.org/licenses/by-sa/3.0/} 
+
+or send a
+letter to Creative Commons, 171 Second Street, Suite 300, San
+Francisco, California, 94105, USA.
+
+
+
+\chapter{Introduction}
+
+Piffle is a pronounceable form of PFL, that is, Packet Filter
+Language. (``Piffle'' is also an obscure word for ``chatter''.) Piffle
+is a very simple programming language for writing network packet
+filters, with one special feature: the compiler can enforce limits on
+the processor time and memory used for processing each packet of
+input. This is accomplished by passing arguments to the --C and --M
+command line options. Memory bounds are in words, more or less, and
+CPU bounds are in arbitrary units.
+
+In this document, I will first consider in general the problem of
+checking arbitrary programs for transgression of such resource bounds,
+and notice that it is very hard. I will conclude that in Piffle we must
+punt and restrict the class of programs that can be used as packet
+filters, which makes the problem comparatively easy.
+
+After that, I will give the definition of the Piffle language, and
+some instructions for how to use the Piffle compiler.
+
+
+\chapter{Bounded packet filters}
+
+An important requirement in designing network packet processing code
+is that the amount of time and memory spent processing each packet be
+bounded.  We do not want the entire network connection grinding to a
+halt because of an unforeseen infinite loop in a packet filter. There
+are several ways to prevent such havoc. In this chapter, I~will
+discuss each of them, and explain which one I chose and why. 
+
+\section{Dynamic bounds on packet filters}
+
+We can check bounds at runtime. For instance, we can run the packet
+filter on each packet for a specified quota of clock ticks and drop
+the packet if processing has not finished by the time the quota runs
+out.
+
+One problem with this runtime approach is that a bug in the packet
+filters can remain hidden for a long time until some unusual packet is
+received that triggers the bug.
+
+Another problem is that it is not clear exactly what to do when the
+bound is exceeded: Should we drop the packet? Should we pass it along
+unaltered? We would like to be able to give the packet filter author
+the opportunity to decide what to do with packets that take too long
+to analyze. But if we allow that sort of flexibility within the
+dynamic checking framework, we will inevitably have to allow a chunk
+of cleanup code to deal with ``slow'' packets, which in turn can only
+run for a restricted amount of time. If \textit{that} time is
+exceeded, do we need a third program to deal with slow packet filters
+that have slow cleanup code?
+
+\section{Static bounds on arbitrary packet filters}
+
+Given the problems with checking bounds at run time, we might want to
+check at compile time. To do that, we need a language in which we can
+express exactly those packet filter programs that execute within given
+time and space bounds.
+
+Determining whether a given program runs within these bounds sounds
+like it ought to be undecidable, but it is not. After all, we are not
+trying to evaluate whether a given packet filter will terminate
+\textit{at all, in the end}; we merely want it to terminate within a
+given number of steps. (The space bound problem is analogous.)
+
+The problem of determining whether a given Turing machine will
+terminate within a certain number of steps is, in fact, decidable.  In
+a limited number $N$ of steps the machine can read only a limited
+amount $N$ of its tape, which means we could check whether the time
+bound by exhaustively running the machine for at most $N$ steps on all
+tapes of length at most $N$.
+
+It should be obvious that this procedure, while quite satisfactory as
+a constructive proof of decidability, is impractical, because the
+process of bounds checking itself would take lots of time (in fact,
+exponential in $N$).  What we need is a bound on the process of bounds
+checking.
+
+\section{Proof carrying code}
+
+One way to design a language that would let us check bounds at compile
+time would be to annotate the program with a proof of the statement
+that it will terminate within a given number of steps.  
+
+Proofs could be provided either as annotations or as part of a type
+system.\footnote{Crary and Weirich. ``Resource Bound Certification.''
+27th \textsc{popl}, p.184.}  The use of proof carrying code would
+allow all packet filters to be written that can be proven to execute
+within bounds, and it would allow for the bounds checking problem
+itself to be tractable.  Depending on the details of the formal system
+used, proof (or type) checking can be polynomial (and often linear) in
+the length of the proof.  Therefore, bound checking of annotated code
+complies with the rule of thumb that compilers should use only
+algorithms that are at most polynomial in the length of the program.
+
+The practical liabilities of proof carrying code are well
+known. Programmers are unfamiliar with proof systems, and those who
+know their way around them could still have trouble coming up with the
+(possibly lengthy) proofs in individual cases. Therefore, we will not
+pursue proof carrying code any further now, and turn instead to a
+simpler solution.
+
+\section{Bounds on restricted packet filters}
+
+If we do not want to get bogged down in the depths of formal type
+theory, but still design a language that would let us check bounds at
+compile time, we arrive at what is, in fact, the traditional solution
+to the problem of bounded packet filters. We will construct a
+programming language out of familiar abstractions, and that language
+will allow us to express a \textit{large but arbitrary} subset of the
+set of all packet filters that execute in bounded time. 
+
+Such a language is not Turing complete, but if it is designed
+intelligently, it can cover a large fraction of the problems that
+people may want to solve using packet filters.
+
+An example of a packet filter language based on familiar programming
+abstractions is the traditional BSD packet filter
+\textit{bpf}.\footnote{McCanne and Van Jacobson. ``The BSD packet
+filter.'' \textsc{usenix} 1993.} Its packet filters are written in a simple
+machine code with a little twist: the virtual machine allows jumps
+forward, but not backward. That way, the time spent executing any
+given packet filter program is at most proportional to the length of
+the program.
+
+For Piffle, we take a similar approach. Piffle is not based on machine
+language, but on block structured, procedural programming languages
+such as C and Pascal. Just as the \textit{bpf} language omits backward
+jumps from machine code, Piffle omits unbounded looping constructs and
+recursive procedure calls from block structured, procedural
+code. Piffle does provide some bounded looping constructs, and
+procedure calls are allowed as long as the call graph contains no
+cycles.
+
+
+\chapter{Language definition}
+
+%% Definitions used for BNF
+\def\code#1{\texttt{#1}}
+\def\id#1{\,\text{\it #1}\,}
+\def\lit#1{\;\code{\fbox{\raisebox{-0.1em}{\rule{0em}{0.8em}}#1}}\;}
+\def\grp#1{\;(#1)\,}
+\def\is{&=&}
+\def\star{^*}
+\def\plus{^+}
+\def\opt{^?}
+\def\bar{\,|\,}
+\def\bbar{\\&\bar&}
+\def\clause#1{\begin{eqnarray*}#1\end{eqnarray*}}
+
+
+The Piffle language is defined as a set of sentences, called source
+files, well formed according to the Piffle syntax. To describe the
+syntax, I will use a modified version of the Backus Normal Form (also
+known as Backus-Naur Formalism or BNF), using $x^?$ to indicate that
+$x$ may appear either once or not at all, $x^+$ to indicate that $x$
+may appear at least once, and $x^*$ to indicate that $x$ may appear
+any number of times, including not at all.
+
+I will not provide a formal definition of the semantics of Piffle. In
+general, when I do not specify the meaning or type of some Piffle
+construct, it can be assumed that it is analogous to the semantics of
+its closest analog in C.
+
+\section{Vocabulary and representation}
+
+A well formed Piffle program is composed of tokens, which are
+identifiers, literals, and reserved tokens. Each token is a sequence
+of characters, and may not contain whitespace unless this is
+explicitly specified. Any amount of whitespace may be inserted between
+tokens, and indeed must be inserted between any two tokens that would
+make a valid token when put together.
+
+Whitespace is any sequence of blanks, tabs, vertical tabs, form feeds,
+line feeds, and carriage returns (in C notation, any character in the
+string \verb." \v\f\t\r\n".). Comments may also appear wherever
+whitespace can appear. (Unlike in C, they may \textit{not} appear
+inside of a token.) In-line comments may be inserted between any
+two tokens. They are delimited by \code{/*} and \code{*/} and may be
+nested. End-of-line comments may also be inserted between any two
+tokens, and they run from \code{//} to the next line end, or the end of
+the file, whichever comes first.
+
+Identifiers are sequences of letters, digits, and underscores. The
+first character may not be a digit. 
+\clause{%
+  \id{ident} \is \grp{ \id{letter} \bar \lit\_ }
+                 \grp{ \id{letter} \bar \lit\_ \bar \id{digit} }\star\\
+  \id{letter} \is \lit A \bar \cdots \bar \lit Z \bar
+                  \lit a \bar \cdots \bar \lit z \\
+  \id{digit} \is \lit 0 \bar \cdots \bar \lit 9
+}
+
+The literals available in Piffle, are numbers, the \code{unit}
+literal, which is the canonical value of type \code{void},
+\code{true}, which means the same as \code{1 :~bool}, and
+\code{false}, which means the same as \code{0 :~bool}. The only
+numbers available are integers. They can be represented as decimal,
+octal, or hexidecimal, the same way as in Haskell 98. Note that this
+differs from C syntax in that leading 0s are simply ignored, and the
+prefix for octal is 0o or 0O rather than simply 0.
+
+\clause{%
+  \id{literal} \is \lit{unit} \bar \lit{true} \bar \lit{false}
+                    \bar \id{integer}\\
+  \id{integer} \is \id{digit}\plus \bar
+		   \grp{\lit{0o} \bar \lit{0O}}\id{octit}\plus \bar
+		   \grp{\lit{0x} \bar \lit{0X}} \id{hexit}\plus\\
+  \id{hexit} \is \lit 0 \bar \cdots \bar \lit 9 \bar \lit A \bar \cdots
+		 \bar \lit F \bar \lit a \bar \cdots \bar \lit f \\ 
+  \id{octit} \is \lit 0 \bar \cdots \bar \lit 7
+}
+
+\section{Declarations}
+
+Piffle allows no recursion, and all functions must be defined before
+they are used. Therefore, there is no need for forward
+declarations. If the return type of a function is omitted, \code{void}
+is implied. The meaning of duplicate definitions is undefined.
+
+\clause{%
+  \id{declaration} \is \id{vardec} \bar \id{fundec} \\
+  \id{vardec} \is \lit{var} \id{ident} \lit : \id{type}\\
+  \id{fundec} \is \lit{fun} \id{ident} \lit ( \id{argl} \opt\lit )
+                  \grp{\lit : \id{type}}\opt \lit = 
+                  \id{expression}  \\
+  \id{argl} \is \id{ident} \lit : \id{type} 
+                \grp{\lit , \id{ident} \lit : \id{type}}\star 
+}
+
+\section{Types}
+
+A type in Piffle is \code{void}, an atomic type, or an array. Atomic
+types come in signed and unsigned, and have 8, 16, or 32 bits.  Each
+array type encompasses only arrays of a specific length; you can
+declare an ``array of 1024 integers'', but not an ``array of
+integers''. This is an important feature, because it is what enables
+the calculation of resource limits. It is at present \textit{not}
+actually used for anything else; in particular, there are no bounds
+checks.
+
+\clause{%
+  \id{type} \is \lit{void}\bar 
+                \id{atomic}\bar
+                \id{atomic} \lit [ \id{integer} \lit ] \\
+  \id{atomic} \is \lit{bool} \bar
+              \lit{u8} \bar \lit{u16} \bar \lit{u32} 
+              \bar \lit{s8} \bar \lit{s16} \bar \lit{s32}
+}
+
+Whenever a value of type of void is expected, a value of any other
+type will do as well.
+
+\section{Expressions}
+
+Unlike in C or Pascal, in Piffle there is no syntactic distinction
+between expressions and statements; every expression can be used as a
+statement and vice versa.
+
+\clause{%
+  \id{expression} \is
+   \id{expression2} \grp{\id{binop} \id{expression2}}\star\\
+  \id{expression2} \is
+    \id{unop}\star \id{expression3} 
+    \grp{\lit{[}\id{expression}\lit{]}}\opt
+    \grp{\lit: \id{atomic}}\opt\\
+  \id{expression3} 
+   \is   \id{literal} 
+   \bbar \id{ident} 
+           \grp{\lit{(} 
+           \grp{ \id{expression}
+             \grp{\lit,\id{expression}}\star }\opt
+           \lit{)}} \opt
+   \bbar \lit( \id{expression} \lit) 
+   \bbar \lit\{ \grp{\id{declaration}\lit;}\star
+          \grp{\id{expression}\lit;}\star \lit\} 
+   \bbar \lit{if} \id{expression}
+         \lit{then} \id{expression}
+	 \grp{\lit{else} \id{expression}}\opt
+   \bbar \lit{for} \id{ident} \lit{in} \id{expression}
+         \grp{\lit{while} \id{expression}}\opt \lit{do}
+	 \id{expression}
+   \bbar \lit{for} \id{ident} \lit{from} \id{integer} \lit{to} 
+         \id{integer} \\&& \grp{\lit{while} \id{expression}}\opt 
+	 \lit{do} \id{expression}
+}
+
+Cast expressions (like \code{x : u32}) allow the use of a value of one
+atomic type with another atomic type. The exact meaning of such
+conversions is undefined but expected to correspond to the behavior of
+the C compiler on the platform in use.
+
+Blocks have the value of the last expression in them (which is why
+there is no \code{return} statement); if a block contains no
+expressions, \code{unit} is implied. 
+
+If-then-else statements have values, and correspond more closely to
+the C ternary operator (\code{?:}) than to the C if-else statement. If
+an \code{else} clause is omitted, \code{unit} is implied.
+
+Loops in Piffle are somewhat peculiar, in order to accommodate
+resource bound checking. There are two types of loops: one will
+iterate with a variable sequentially bound to each number in a range
+(which includes both bounds), and the other will iterate with a
+variable sequentially bound to each element in an array. Both allow
+the use of a \code{while} clause, which will be evaluated before each
+iteration; if it evaluates to 0, the loop is aborted immediately. The
+iterator variable is bound within the while clause, so it is perfectly
+valid to say something like \code{for i from 0 to 10 while
+is\_useful(i) do ...}.
+
+
+\section{Operators}
+
+The operators are given by
+\clause{%
+  \id{binop} \is 
+    \lit{*} \bar \lit{/} \bar \lit{\%} \bar \lit{+} \bar \lit{-} \bar
+    \lit{<<} \bar \lit{>>} \bar \lit{<}\bbar \lit{>} \bar \lit{<=}
+    \bar \lit{>=} \bar \lit{==} \bar \lit{!=} \bar \lit{\&} \bar
+    \lit{\^{}} \bbar \lit{|}\bar \lit{\&\&} \bar \lit{||} \bar
+    \lit{=} \bar \lit{+=} \bar \lit{-=} \bar \lit{*=} \bbar
+    \lit{\%=}\bar \lit{/=} \bar \lit{|=} \bar \lit{\&=} \bar
+    \lit{\^{}=} \bar \lit{>>=} \bar \lit{<<=} \\
+  \id{unop} \is
+    \lit{+} \bar \lit{-} \bar \lit{\~{}} \bar \lit{!}
+}
+
+The grammar as specified so far correctly and completely specifies the
+language, but it is misleading and ambiguous, because it does not
+indicate the meaning of certain compound expressions. In fact, the
+actual Piffle parser will respect the standard C precedence rules, as
+summarized in the following table.
+
+\def\x{\phantom{x}}
+\vspace{1em}
+\begin{tabular}{ll}
+\hline\hline
+Operators (ordered from tight to loose) & Associativity\\
+\hline
+\verb.*. \x \verb./. \x \verb.%. & left-to-right \\
+\verb.+. \x \verb.-. & left-to-right \\
+\verb.<<. \x \verb.>>. & left-to-right \\
+\verb.<. \x \verb.>. \x \verb.<=. \x \verb.>=. & left-to-right \\
+\verb.==. \x \verb.!=. & left-to-right \\
+\verb.&. & left-to-right \\
+\verb.^. & left-to-right \\
+\verb.|. & left-to-right \\
+\verb.&&. & left-to-right \\
+\verb.||. & left-to-right \\
+\verb.=. \x \verb.+=. \x \verb.-=. \x \verb.*=. \x \verb.%=. \x
+\verb./=. \x \verb.|=. \x \verb.&=. \x \verb.^=. \x
+\verb.>>=. \x \verb.<<=. & right-to-left\\
+\hline\hline
+\end{tabular}
+\vspace{1em}
+
+The keywords have the loosest possible preference, and thus the
+expressions at the end of \code{if} and \code{for} expressions extend
+to the right as far as possible.
+
+Even though any expression may be used, according to the grammar, as
+the left-hand side of an assignment, assignment is only a meaningful
+operation when the left-hand side is an ``lvalue'' of the form
+$\id{ident}\grp{\lit{[}\id{expression}\lit{]}}\opt$.
+
+\section{The types of expressions}
+
+The binary operators \code{*}, \code{/}, \code{\%}, \code{+},
+\code{-}, \code{\&}, \code{|}, \code{\^{}}, \code{=}, \code{*=},
+\code{/=}, \code{\%=}, \code{+=}, \code{-=}, \code{\&=}, \code{|=},
+\code{\^{}=}, all take two operands of the same, atomic, type, and
+return a value of that type, that is, formally,
+\[ \code{*}, \code{/}, \code{\%}, \code{+}, \code{-}, \code{\&},
+\code{|}, \code{\^{}}, \code{=}, \code{*=}, \ldots, \code{\^{}=} 
+\::\:
+\forall \tau\in\{\code{bool}, \code{u8}, \code{u16}, \code{u32},
+ \code{s8}, \code{s16},
+ \code{s32}\}.\;\;\tau\times\tau\rightarrow\tau\,.\] 
+The unary operators \code{+}, \code{-}, and \code{\~{}} all take one
+ operand of any integer type and return a value of that type, that is,
+ formally,
+ \[\code{+}, \code{-}, \code{\~{}} \::\: 
+ \forall \tau\in\{\code{bool}, \code{u8}, \code{u16}, \code{u32}, \code{s8},
+ \code{s16}, \code{s32}\}.\;\;\tau\rightarrow\tau\,.\]
+The binary operators \code{<}, \code{>}, \code{<=}, \code{>=},
+ \code{==}, \code{!=},
+\code{\&\&}, and \code{||} all take two operands of arbitrary atomic
+types, and return a value of type \code{bool}, that is, formally
+\[ \code{<}, \code{>}, \code{<=}, \code{>=},
+   \code{==}, \code{!=},
+   \code{\&\&}, \code{||} \::\:
+   \forall \tau,\upsilon\in\{\code{bool}, \code{u8}, \code{u16}, \code{u32},
+    \code{s8}, \code{s16},
+    \code{s32}\}.\;\;\tau\times\upsilon\rightarrow\code{bool}\,.\] 
+The unary operator \code{!} takes one operand of any integer types and
+returns a value of type \code{bool}, that is, formally,
+\[ \code{!} \::\:
+   \forall \tau\in\{\code{bool}, \code{u8}, \code{u16}, \code{u32},
+    \code{s8}, \code{s16},
+    \code{s32}\}.\;\;\tau\rightarrow\code{bool}\,.\] For the binary
+    operators \code{<<}, \code{>>}, \code{<<=}, and \code{>>=}, the
+    value being shifted and the value indicating the number of bits to
+    shift need not be of the same type, but both types must be atomic,
+    and the entire expression gets the type of the value being
+    shifted. Formally,
+\[\code{<<}, \code{>>}, \code{<<=}, \code{>>=} \::\:
+ \forall \sigma,\tau\in\{\code{bool}, \code{u8}, \code{u16}, \code{u32},
+ \code{s8}, \code{s16},
+ \code{s32}\}.\;\;\tau\times\sigma\rightarrow\tau\,.\]
+
+A sequence \code{\{...\}} of expressions has the value and type of the
+last expression in the sequence, or \code{void} if there are no
+expressions. All expressions preceding the last are expected to have
+type \code{void}, but as stated above, any other type will do when
+\code{void} is expected.
+
+An \code{if} expression consists of a condition, a consequent, and an
+optional alternative. If the alternative is omitted, \code{unit} is
+implied. The condition may be of any atomic type. The types of the
+consequent and the alternative must match, but note again that because
+any type can be used instead of \code{void}, if the type of either
+branch is \code{void}, the other branch can have any type. The
+alternative is evaluated only if the condition evaluates to \code{0};
+otherwise, the consequent is evaluated. In either case, the entire
+expression gets the value of the evaluated clause. To clarify:
+\begin{verbatim}
+fun frob () : void = {
+    var x, y : u32;
+    if 3 < 5 then do_something();  /* do_something() is executed */
+    x = if 3 < 5 then 0 else 1;    /* x is set to 0 */
+    x = if 3 > 5 then 0 else 1;    /* x is set to 1 */
+    y = if 3 < 5 then 0;           /* This won't type check!! */
+};
+\end{verbatim}
+
+There are two iteration constructs in Piffle. Both are different from
+iteration constructs in comparable languages because of the need for
+computing resource bounds. 
+
+An expression of the form \[ \lit{for} \alpha \lit{in} \beta
+   \grp{\lit{while} \gamma}\opt \lit{do} \delta \] has type
+   \code{void}. The range $\beta$ must be of type \code{array $i$
+   $\tau$}, for some integer $i$ and some atomic type $\tau$, and the
+   variable $\alpha$ will be of type $\tau$ and scope over $\gamma$
+   and $\delta$. The condition $\gamma$ may have any atomic type, and
+   the body $\delta$ must be of type \code{void} (with any other type
+   allowed).
+
+An expression of the form \[ \lit{for} \alpha \lit{from} \beta_0
+   \lit{to} \beta_1 \grp{\lit{while} \gamma}\opt \lit{do} \delta \]
+   has type \code{void}. The bounds $\beta_{0,1}$ must be constant
+   expressions of any atomic type, and $\alpha$ will be of type
+   \code{u32} and scope over $\gamma$ and $\delta$. The condition
+   $\gamma$ may have any atomic type, and the body $\delta$ must be of
+   type \code{void} (with any other type allowed).
+
+\section{Constant expressions}
+
+Integer literals are assigned a special type (\code{sliteral}) by the
+compiler. This type is considered atomic, and values of type
+\code{sliteral} can always be used when any atomic type is expected. 
+
+
+\section{Source files}
+
+A source file consists of a number of declarations separated by
+semicolons.
+
+\clause{%
+  \id{file} \is \grp{\id{declaration}\lit;}\star
+}
+
+\section{The filter function}
+
+The function named \code{filter} has a special meaning.  It is used as
+the root of the call graph (which is actually a tree, in the Piffle
+case) by the compiler when checking for memory and CPU usage bounds.
+It is also the function that gets called on every incoming packet.
+
+Strictly speaking, this is dependent on which boilerplate is being
+used. Boilerplates are a concept we will get to in the chapter about
+the compiler, but rest assured that all currently available
+boilerplates will cause \code{filter} to be called on each incoming
+packet.
+
+
+\section{Preprocessor}
+
+It should be possible to run a Piffle program through a regular C
+preprocessor (cpp). This is not done by default; you would have to do
+it manually. Also make sure not to use nested comments if you want to
+use cpp. The compiler does not interpret cpp line directives, so any
+error messages you get about preprocessed code will refer to positions
+in the preprocessed source.
+
+\chapter{The Piffle compiler, pfc}
+
+The Piffle compiler, pfc, is a fairly simple compiler, written in the
+Haskell programming language, that outputs C code.  It is documented
+in the pfc(1) man page, which is reproduced here in its
+entirety.\footnote{The man pages included in this manual have been
+converted to plain text using nroff and colcrt, which strips out most
+of the formatting. If you know a better way of inserting a man page
+into a \LaTeX{} document, please tell me.}
+
+\section{The pfc(1) manual page}
+
+\VerbatimInput[fontsize=\footnotesize]{pfc.txt}
+
+\chapter{The pcap boilerplate, pcap.c}
+
+As I explained in the pfc man page, you usually want to tell pfc to
+embed a certain ``boilerplate'' into its output. The ``boilerplate''
+is a file that typically contains a \verb.main(). function that
+provides some means of gathering network packets, repeatedly calling
+\verb.filter(). on them, and spitting them back out.
+
+There is a second man page, pfc.pcap(1), that explains how to use a
+Piffle program that has been complied using the pcap.c
+boilerplate. Enjoy.
+
+\section{The pfc.pcap(1) manual page}
+
+\VerbatimInput[fontsize=\footnotesize]{pfc.pcap.txt}
+
+\section{Writing programs for the pcap.c boilerplate}
+
+The pcap.c boilerplate defines a function prototype \code{filter()} in
+C as follows:
+
+\begin{verbatim}
+uint32_t filter(uint8_t inp[], uint32_t in_sz, uint8_t out[], uint32_t out_sz);
+\end{verbatim}
+
+This function is supposed to be declared in Piffle as follows:
+
+\begin{verbatim}
+fun filter( inp : u8[...], inp_sz : u32, 
+            out : u8[...], out_sz : u32 ) : u32 = ...;
+\end{verbatim}
+
+The \code{inp} and \code{out} arrays are the input and output packets,
+and the \code{inp\_sz} and \code{out\_sz} integers contain the size of
+those arrays. The function is supposed to write things into the
+\code{out} array, and return the actual length of the outgoing packet.
+
+For instance, a \code{filter} function that simply copies the incoming
+packet would look like this:
+
+\begin{verbatim}
+fun filter( inp : u8[65536], inp_sz : u32, 
+            out : u8[65536], out_sz : u32 ) : u32 = {
+     var i : u32;
+     var out_sz_new : u32;
+
+     out_sz_new = if inp_sz < out_sz then inp_sz else out_sz;
+
+     for i from 0 to 65536 while i < out_sz_new do {
+          out[i] = inp[i];
+     };
+
+     out_sz_new;
+};
+\end{verbatim}
+
+
+\chapter{The test boilerplate, test.c}
+
+There is another boilerplate called text.c, which exists mainly for
+the benefit of the Piffle test suite, and is probably not useful for
+anything else. It is nonetheless documented on its own manpage,
+pfc.test(1).
+
+\section{The pfc.test(1) manual page}
+
+\VerbatimInput[fontsize=\footnotesize]{pfc.test.txt}
+
+\chapter{An example of a packet filter}
+
+\section{A packet filter in PFL}
+
+\VerbatimInput[fontsize=\footnotesize]{pcap_tcp.pfl}
+
+\newpage
+\section{The packet filter translated to C by pfc}
+
+\VerbatimInput[fontsize=\footnotesize]{pcap_tcp.c}
+
+
+\end{document}

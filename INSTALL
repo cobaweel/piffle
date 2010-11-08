@@ -1,0 +1,29 @@
+                             -*- text -*-
+
+                            HOW TO INSTALL
+
+To compile, just run 
+
+    make
+
+To install in /usr/local, run 
+
+    make install
+
+as root. 
+
+You will need the following packages on Ubuntu, or similar ones on
+your system:
+
+    libpcap0.8         The pcap library (you NEED 0.8!)
+    libpcap0.8-dev     Headers for pcap
+    libghc6-mtl-dev    Monad transformer library
+
+To install in some other directory, run
+
+    make install PREFIX=/some/other/directory        
+
+To compile the tests, run
+
+    make test
+        

@@ -1,0 +1,20 @@
+fun filter ( x : u32, y : u32[3] ) : u32 = {
+     var a : u32;
+     var b : u32;
+
+     a = b = 0;
+     a + b + a;
+
+     x + +x + 1;
+
+     (x || ((x | x) && (x | x))) || x;
+     x || x | x && x | x || x;  /* should be same */
+
+     (x && x) || (x && x);
+     x && x || x && x;          /* should be same */
+
+     if x && x then 1 else 0 : u32;
+     (if x && x then 1 else 0) : u32;
+};     
+     
+        

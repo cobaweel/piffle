@@ -1,0 +1,63 @@
+                             -*- text -*-
+
+                          PIFFLE SOURCE CODE
+
+This file contains some information for people who want to dive into
+the Piffle code and hack on it.
+
+
+                      THE PASSES OF THE COMPILER
+
+                          plain text
+
+  -- PiffleParse -->      Piffle.file
+
+  -- PifflePiffle -->     Piffle.file
+
+  -- IrPiffle -->         Ir.file
+
+  -- IrIr -->             Ir.file
+
+  -- CIr -->              C.file
+
+  -- CC -->               C.file
+
+
+                             INTRODUCTION
+
+The Piffle compiler is written in Haskell. The main entry point is
+Main.hs, which reads the command line, figures out what to do, calls
+the various passes in order, and writes the appropriate output to
+stdout, stderr, and the appropriate output file.
+
+The trickiest part of the compiler, and the most important to
+understand, is probably the monad in Compiler.hs, which provides
+various functions such as error messages and logging of debug
+messages.
+
+
+                                STYLE
+              (IN CASE ANYONE WANTS TO SEND ME PATCHES)
+
+* I try to mark any likely sources of bugs and incompleteness with the
+  characters "XXX" in a comment, so you should be able to quickly find
+  a list of suspected rough spots in the code by grepping for "XXX"
+  through the various files.
+
+* I try not to make lines longer than 80 characters.
+
+* I try to give high level comments about an entire file or
+  section. The idea is that comments should explain *why* something is
+  done, not *what* is being done (that's what the code is for.)
+
+* In C code, I follow K&R indentation style, with 4 space indents. You
+  can get this style with GNU indent (indent -kr -i4).
+
+* In Haskell, I try to make invalid states unpresentable as much as I
+  can without stretching the type system to the point of insanity.
+
+* In Haskell, I put things on separate lines much more often than is
+  common. This eliminates the need for laboriously reformatting the
+  code when it gets more complex, and makes it easier to use diff and
+  patch on the Haskell code.
+

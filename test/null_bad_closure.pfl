@@ -1,0 +1,10 @@
+fun filter () = {
+     var x : s32;
+     fun g () = {
+          x = x + 1;
+          x;
+     };
+     x = 0;
+     g;
+};
+

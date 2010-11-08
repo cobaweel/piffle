@@ -1,0 +1,5 @@
+fun foo () : s32 = { 3; };
+fun bar () = unit; 
+fun bar () = { unit; } ;
+fun filter () = unit;
+
